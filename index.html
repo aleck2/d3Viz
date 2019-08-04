@@ -1,0 +1,196 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/2.24.0/d3-legend.min.js"></script>
+    <title>Basic Scatter Plot</title>
+    <style>
+      body {
+        margin: 0px;
+      }
+      .domain {
+        display: none;
+      }
+      .tick line {
+        stroke: #C0C0BB;
+      }
+      .tick text, .legendCells text {
+        fill: #8f8c83;
+        font-size: 22pt;
+        font-family: sans-serif;
+      }
+      .axis-label, .legend-label {
+        fill: #1c1b1b;
+        font-size: 18pt;
+        font-family: sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <svg width="1300" height="500"></svg>
+    
+    <script>
+      const yValue = d => d.pricePer;
+      const yLabel = 'Price';
+      const xValue = d => d.endDate;
+      //const xValue = d => d.endDate.toDateString();
+      const xLabel = 'Date';
+      const colorValue = d => d.widget;
+      const colorLabel = 'Widget Type';
+      const margin = { left: 120, right: 300, top: 20, bottom: 120 };
+
+      const svg = d3.select('svg');
+      const width = svg.attr('width');
+      const height = svg.attr('height');
+      const innerWidth = width - margin.left - margin.right;
+      const innerHeight = height - margin.top - margin.bottom;
+
+      const g = svg.append('g')
+          .attr('transform', `translate(${margin.left},${margin.top})`);
+      const xAxisG = g.append('g')
+          .attr('transform', `translate(0, ${innerHeight})`);
+      const yAxisG = g.append('g');
+      const colorLegendG = g.append('g')
+          .attr('transform', `translate(${innerWidth + 60}, 150)`);
+
+      xAxisG.append('text')
+          .attr('class', 'axis-label')
+          .attr('x', innerWidth / 2)
+          .attr('y', 100)
+          .text(xLabel);
+
+      yAxisG.append('text')
+          .attr('class', 'axis-label')
+          .attr('x', -innerHeight / 2)
+          .attr('y', -60)
+          .attr('transform', `rotate(-90)`)
+          .style('text-anchor', 'middle')
+          .text(yLabel);
+
+      colorLegendG.append('text')
+          .attr('class', 'legend-label')
+          .attr('x', -30)
+          .attr('y', -40)
+          .text(colorLabel);
+
+      const mindate = new Date(2019,0,1),
+          maxdate = new Date(2019,06,30);
+      const xScale = d3.scaleTime()
+          .domain([mindate, maxdate])    
+          .range([0, innerWidth]);   
+
+      const yScale = d3.scaleLinear();
+      const colorScale = d3.scaleOrdinal()
+        .range(d3.schemeCategory10);
+
+      const xAxis = d3.axisBottom()
+        .scale(xScale)
+        .tickPadding(15)
+        .tickSize(-innerHeight);
+
+      const yAxis = d3.axisLeft()
+        .scale(yScale)
+        .ticks(5)
+        .tickPadding(15)
+        .tickSize(-innerWidth);
+
+      const colorLegend = d3.legendColor()
+        .scale(colorScale)
+        .shape('circle');
+
+      var parser = d3.timeParse("%m/%d/%y");
+      const row = d => {
+        d.widget= d.wudget;
+        d.quantity = +d.quantityAdj;
+        d.pricePer = +d.pricePer;
+        d.totalPricePaid = +d.totalPricePaid;
+        d.listingType = d.listingType;
+        //console.log(d.fixedTime)
+        d.endDate = parser(d.fixedTime)
+        //console.log(d.endDate)
+        d.day = d.day
+        d.gmtHour = +d.gmtHour
+        d.totalFeedback = +d.totalFeedbackN
+        return d;
+      };
+
+      d3.csv('https://raw.githubusercontent.com/aleck2/test/master/redacted%20purchase%20data.csv', row, data => {
+        xScale
+          .nice();
+
+        yScale
+          .domain(d3.extent(data, yValue))
+          .range([innerHeight, 0])
+          .nice();
+
+        g.selectAll('circle').data(data)
+          .enter().append('circle')
+            .attr('cx', d => xScale(xValue(d)))
+            //.attr('cx', d => xValue(d))
+            .attr('cy', d => yScale(yValue(d)))
+            .attr('fill', d => colorScale(colorValue(d)))
+            .attr('fill-opacity', 0.48672)
+            .attr('r', 6);
+
+        xAxisG.call(xAxis);
+        yAxisG.call(yAxis);
+        colorLegendG.call(colorLegend)
+          .selectAll('.cell text')
+            .attr('dy', '0.1em');
+      });
+
+      // Add a clipPath: everything out of this area won't be drawn.
+      //var clip = g.append("defs").append("g:clipPath")
+      var clip = g.append("clipPath")
+          .attr("id", "clip")
+          .append("rect")
+          .attr("width", innerWidth )
+          .attr("height", innerHeight )
+          .attr("x", 0)
+          .attr("y", 0);
+      // Add brushing
+      var brush = d3.brushX()
+          .extent( [ [0,0],[innerWidth,innerHeight]])
+          .on("end", updateChart) // Each time the brush selection changes, trigger the 'updateChart' function
+
+      // Create the scatter variable: where both the circles and the brush take place
+      var scatter = g.append('g')
+        .attr("clip-path", "url(#clip)")
+      // Add the brushing
+      scatter
+        .append("g")
+          .attr("class", "brush")
+          .call(brush);
+     // A function that set idleTimeOut to null
+      var idleTimeout
+      function idled() { idleTimeout = null; }
+
+      // A function that update the chart for given boundaries
+      function updateChart() {
+
+        extent = d3.event.selection
+
+        // If no selection, back to initial coordinate. Otherwise, update X axis domain
+        if(!extent){
+          if (!idleTimeout) return idleTimeout = setTimeout(idled, 350); // This allows to wait a little bit
+          xScale.domain([mindate, maxdate])    
+        }else{
+          xScale.domain([ xScale.invert(extent[0]), xScale.invert(extent[1]) ])
+          scatter.select(".brush").call(brush.move, null) // This remove the grey brush area as soon as the selection has been done
+        }
+
+        // Update axis and circle position
+        xAxisG.transition().duration(1000).call(d3.axisBottom(xScale))
+        g.selectAll("circle")
+          .transition().duration(1000)
+          .attr("cx", d => xScale(xValue(d)))
+          //.attr("cy", d => yScale(yValue(d)));
+        }
+    </script>
+  </body>
+</html>
+
+
