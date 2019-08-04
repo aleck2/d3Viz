@@ -27,10 +27,62 @@
         font-size: 18pt;
         font-family: sans-serif;
       }
+      .tooltip {
+        position: absolute;
+        font-size: 12px;
+        width:  auto;
+        height: auto;
+        pointer-events: none;
+        background-color: white;
+      }
+      .button {
+        display: inline-block;
+        border-radius: 4px;
+        background-color: #f4511e;
+        border: none;
+        color: #FFFFFF;
+        text-align: center;
+        font-size: 28px;
+        padding: 20px;
+        width: 200px;
+        transition: all 0.5s;
+        cursor: pointer;
+        margin: 5px;
+      }
+
+      .button span {
+        cursor: pointer;
+        display: inline-block;
+        position: relative;
+        transition: 0.5s;
+      }
+
+      .button span:after {
+        content: '\00bb';
+        position: absolute;
+        opacity: 0;
+        top: 0;
+        right: -20px;
+        transition: 0.5s;
+      }
+
+      .button:hover span {
+        padding-right: 25px;
+      }
+
+      .button:hover span:after {
+        opacity: 1;
+        right: 0;
+      }
     </style>
   </head>
   <body>
     <svg width="1300" height="500"></svg>
+    <button class="button" style="vertical-align:middle" onclick="window.open('stackedBarChart.html','_self')">
+      <span>Next</span>
+    </button>
+    
+
     
     <script>
       const yValue = d => d.pricePer;
@@ -40,6 +92,7 @@
       const xLabel = 'Date';
       const colorValue = d => d.widget;
       const colorLabel = 'Widget Type';
+      const annotationLabel = 'Double click to unzoom';
       const margin = { left: 120, right: 300, top: 20, bottom: 120 };
 
       const svg = d3.select('svg');
@@ -55,6 +108,8 @@
       const yAxisG = g.append('g');
       const colorLegendG = g.append('g')
           .attr('transform', `translate(${innerWidth + 60}, 150)`);
+      
+      const annotationG = g.append('g').attr('transform',`translate(${innerWidth + 60}, 150)`); 
 
       xAxisG.append('text')
           .attr('class', 'axis-label')
@@ -75,6 +130,13 @@
           .attr('x', -30)
           .attr('y', -40)
           .text(colorLabel);
+
+      annotationG.append('text')
+          .style("font","20px sans-serif")
+          .attr('class', 'text')
+          .attr('x', -30)
+          .attr('y', -100)
+          .text(annotationLabel);
 
       const mindate = new Date(2019,0,1),
           maxdate = new Date(2019,06,30);
